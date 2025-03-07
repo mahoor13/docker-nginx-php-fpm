@@ -60,6 +60,7 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
         php8.3-pgsql \
         php8.3-readline \
         php8.3-redis \
+        php8.3-sqlite3 \
         php8.3-xml \
         php8.3-zip \
         libxext6 \
