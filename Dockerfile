@@ -117,7 +117,8 @@ RUN rm -rf /tmp/composer-setup.* \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir /var/run/nginx \
-    && chown 1001:1001 /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx -R
+    && touch /var/log/php-fpm.log \
+    && chown 1001:1001 /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx /var/run/php /var/log/php-fpm.log -R
 
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
