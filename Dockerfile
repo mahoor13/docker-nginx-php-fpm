@@ -12,8 +12,8 @@ ENV COMPOSER_VERSION 2.5.8
 # Install Basic Requirements
 RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
     && set -x \
-    && groupadd -g 1000 nginx \
-    && useradd -u 1000 -g 1000 -r -s /usr/sbin/nologin nginx \
+    && groupadd -g 1001 nginx \
+    && useradd -u 1001 -g 1001 -r -s /usr/sbin/nologin nginx \
     && apt-get update \
     && apt-get install --no-install-recommends $buildDeps --no-install-suggests -q -y gnupg dirmngr wget apt-transport-https lsb-release ca-certificates \
     && \
@@ -96,6 +96,7 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
     && sed -i -e "s/pm.max_spare_servers = 3/pm.max_spare_servers = 4/g" ${fpm_conf} \
     && sed -i -e "s/pm.max_requests = 500/pm.max_requests = 200/g" ${fpm_conf} \
     && sed -i -e "s/www-data/nginx/g" ${fpm_conf} \
+    && sed -i -e "s/\/var\/run\/nginx\.pid/\/var\/run\/nginx\/nginx\.pid/g" ${fpm_conf} \
     && sed -i -e "s/^;clear_env = no$/clear_env = no/" ${fpm_conf} \
     && echo "extension=redis.so" > /etc/php/8.3/mods-available/redis.ini \
     # && echo "extension=memcached.so" > /etc/php/8.3/mods-available/memcached.ini \
@@ -121,7 +122,9 @@ RUN rm -rf /tmp/composer-setup.* \
     && apt-get purge -y --auto-remove $buildDeps \
     && apt-get clean \
     && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir /var/run/nginx \
+    && chown 1001:1001 /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx -R
 
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
