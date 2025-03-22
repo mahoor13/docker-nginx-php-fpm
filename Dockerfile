@@ -1,13 +1,14 @@
 FROM debian:bullseye-slim
 
+COPY --from=ochinchina/supervisord:latest /usr/local/bin/supervisord /usr/local/bin/supervisord
+
 ENV TZ=Asia/Tehran
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV NGINX_VERSION 1.25.2-1~bullseye
 ENV php_conf /etc/php/8.3/fpm/php.ini
 ENV fpm_conf /etc/php/8.3/fpm/pool.d/www.conf
-ENV COMPOSER_VERSION 2.5.8
+ENV COMPOSER_VERSION 2.8.6
 
 # Install Basic Requirements
 RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
@@ -37,12 +38,10 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
         nano \
         zip \
         unzip \
-        python3-pip \
-        python-setuptools \
         git \
         inotify-tools \
         libmagickwand-dev \
-        nginx=${NGINX_VERSION} \
+        nginx \
         php8.3-bcmath \
         php8.3-cli \
         php8.3-common \
@@ -78,9 +77,6 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
         xfonts-base \
         xfonts-75dpi \
     && mkdir -p /run/php \
-    && pip install wheel \
-    && pip install supervisor \
-    && pip install git+https://github.com/coderanger/supervisor-stdout \
     && echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d \
     && rm -rf /etc/nginx/conf.d/default.conf \
     && sed -i -e "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g" ${php_conf} \
@@ -96,15 +92,12 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
     && sed -i -e "s/pm.max_spare_servers = 3/pm.max_spare_servers = 4/g" ${fpm_conf} \
     && sed -i -e "s/pm.max_requests = 500/pm.max_requests = 200/g" ${fpm_conf} \
     && sed -i -e "s/www-data/nginx/g" ${fpm_conf} \
-    && sed -i -e "s/\/var\/run\/nginx\.pid/\/var\/run\/nginx\/nginx\.pid/g" ${fpm_conf} \
     && sed -i -e "s/^;clear_env = no$/clear_env = no/" ${fpm_conf} \
+    && sed -i -e "s/nginx\.pid/nginx\/nginx\.pid/g" /etc/nginx/nginx.conf \
     && echo "extension=redis.so" > /etc/php/8.3/mods-available/redis.ini \
-    # && echo "extension=memcached.so" > /etc/php/8.3/mods-available/memcached.ini \
     && echo "extension=imagick.so" > /etc/php/8.3/mods-available/imagick.ini \
     && ln -sf /etc/php/8.3/mods-available/redis.ini /etc/php/8.3/fpm/conf.d/20-redis.ini \
     && ln -sf /etc/php/8.3/mods-available/redis.ini /etc/php/8.3/cli/conf.d/20-redis.ini \
-    # && ln -sf /etc/php/8.3/mods-available/memcached.ini /etc/php/8.3/fpm/conf.d/20-memcached.ini \
-    # && ln -sf /etc/php/8.3/mods-available/memcached.ini /etc/php/8.3/cli/conf.d/20-memcached.ini \
     && ln -sf /etc/php/8.3/mods-available/imagick.ini /etc/php/8.3/fpm/conf.d/20-imagick.ini \
     && ln -sf /etc/php/8.3/mods-available/imagick.ini /etc/php/8.3/cli/conf.d/20-imagick.ini \
     # Install Composer
@@ -132,16 +125,8 @@ COPY ./supervisord.conf /etc/supervisord.conf
 # Override nginx's default config
 COPY ./default.conf /etc/nginx/conf.d/default.conf
 
-# Override default nginx welcome page
-# COPY ./app /usr/share/nginx/html
-
-# Copy Scripts
-COPY ./start.sh /start.sh
-
-# RUN ln -s /usr/share/nginx/html /app
-
 WORKDIR /app
 
 EXPOSE 8000
 
-CMD ["/start.sh"]
+CMD ["/usr/local/bin/supervisord"]
