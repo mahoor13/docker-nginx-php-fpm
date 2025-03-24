@@ -1,5 +1,8 @@
 FROM debian:bullseye-slim
 
+ARG GID=1001
+ARG UID=1001
+
 COPY --from=ochinchina/supervisord:latest /usr/local/bin/supervisord /usr/local/bin/supervisord
 
 ENV TZ=Asia/Tehran
@@ -13,8 +16,8 @@ ENV COMPOSER_VERSION 2.8.6
 # Install Basic Requirements
 RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
     && set -x \
-    && groupadd -g 1001 nginx \
-    && useradd -u 1001 -g 1001 -r -s /usr/sbin/nologin nginx \
+    && groupadd -g ${GID} nginx \
+    && useradd -u ${UID} -g ${GID} -r -s /usr/sbin/nologin nginx \
     && apt-get update \
     && apt-get install --no-install-recommends $buildDeps --no-install-suggests -q -y gnupg dirmngr wget apt-transport-https lsb-release ca-certificates \
     && \
@@ -106,19 +109,19 @@ RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
     && php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }" \
     && php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION} \
     # install wkhtmltopdf
-    && curl -L -o /tmp/wkhtmltox_0.12.5-1.buster_amd64.deb https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.5-1.buster_amd64.deb \
-    && dpkg -i /tmp/wkhtmltox_0.12.5-1.buster_amd64.deb || apt-get install -f -y
+    && curl -L -o /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.1.4-2.buster_amd64.deb \
+    && dpkg -i /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb || apt-get install -f -y
     # Clean up
 RUN rm -rf /tmp/composer-setup.* \
     && rm -rf /tmp/pear \
-    && rm -f /tmp/wkhtmltox_0.12.5-1.buster_amd64.deb \
+    && rm -f /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb \
     && apt-get purge -y --auto-remove $buildDeps \
     && apt-get clean \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir /var/run/nginx \
     && touch /var/log/php-fpm.log \
-    && chown 1001:1001 /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx /var/run/php /var/log/php-fpm.log -R
+    && chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx /var/run/php /var/log/php-fpm.log -R
 
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
