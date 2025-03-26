@@ -16,13 +16,13 @@ $ cd docker-nginx-php-fpm
 followed by
 
 ```
-$ docker buildx build . -t mahoor13/nginx-php-fpm:php83 --progress plain --build-arg UID=1001 --build-arg GID=1001 --build-arg TZ=Asia/Tehran # PHP 8.3.x
+$ docker buildx build . -t mahoor13/docker-nginx-php-fpm:php83 --progress plain --build-arg UID=1001 --build-arg GID=1001 --build-arg TZ=Asia/Tehran # PHP 8.3.x
 ```
 
 ## Pulling from Docker Hub
 
 ```
-$ docker pull mahoor13/nginx-php-fpm:php83
+$ docker pull mahoor13/docker-nginx-php-fpm:php83
 ```
 
 ## Running
@@ -30,7 +30,7 @@ $ docker pull mahoor13/nginx-php-fpm:php83
 To run the container:
 
 ```
-$ sudo docker run -d mahoor13/nginx-php-fpm:php83
+$ sudo docker run -d mahoor13/docker-nginx-php-fpm:php83
 ```
 
 Default web root:
