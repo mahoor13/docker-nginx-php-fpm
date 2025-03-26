@@ -1,136 +1,71 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 ARG GID=1001
 ARG UID=1001
-
-COPY --from=ochinchina/supervisord:latest /usr/local/bin/supervisord /usr/local/bin/supervisord
-
-ENV TZ=Asia/Tehran
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ARG TZ=UTC
+ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-mysql php8.3-opcache php8.3-pgsql php8.3-readline php8.3-redis php8.3-sqlite3 php8.3-xml php8.3-zip"
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV php_conf /etc/php/8.3/fpm/php.ini
-ENV fpm_conf /etc/php/8.3/fpm/pool.d/www.conf
+ENV fpm_www_conf /etc/php/8.3/fpm/pool.d/www.conf
+ENV php_fpm_conf /etc/php/8.3/fpm/php-fpm.conf
+ENV nginx_conf /etc/nginx/nginx.conf
 ENV COMPOSER_VERSION 2.8.6
 
-# Install Basic Requirements
-RUN buildDeps='curl gcc make autoconf libc-dev zlib1g-dev pkg-config' \
-    && set -x \
-    && groupadd -g ${GID} nginx \
-    && useradd -u ${UID} -g ${GID} -r -s /usr/sbin/nologin nginx \
-    && apt-get update \
-    && apt-get install --no-install-recommends $buildDeps --no-install-suggests -q -y gnupg dirmngr wget apt-transport-https lsb-release ca-certificates \
-    && \
-    NGINX_GPGKEY=573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62; \
-          found=''; \
-          for server in \
-                  ha.pool.sks-keyservers.net \
-                  hkp://keyserver.ubuntu.com:80 \
-                  hkp://p80.pool.sks-keyservers.net:80 \
-                  pgp.mit.edu \
-          ; do \
-                  echo "Fetching GPG key $NGINX_GPGKEY from $server"; \
-                  apt-key adv --batch --keyserver "$server" --keyserver-options timeout=10 --recv-keys "$NGINX_GPGKEY" && found=yes && break; \
-          done; \
-    test -z "$found" && echo >&2 "error: failed to fetch GPG key $NGINX_GPGKEY" && exit 1; \
-    echo "deb http://nginx.org/packages/mainline/debian/ bullseye nginx" >> /etc/apt/sources.list \
-    && wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg \
-    && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list \
-    && apt-get update \
-    && apt-get install --no-install-recommends --no-install-suggests -q -y \
-        nano \
-        zip \
-        unzip \
-        git \
-        inotify-tools \
-        libmagickwand-dev \
-        nginx \
-        php8.3-bcmath \
-        php8.3-cli \
-        php8.3-common \
-        php8.3-curl \
-        php8.3-dev \
-        php8.3-fpm \
-        php8.3-gd \
-        php8.3-imagick \
-        php8.3-inotify \
-        php8.3-intl \
-        php8.3-mbstring \
-        php8.3-mcrypt \
-        php8.3-mysql \
-        php8.3-opcache \
-        php8.3-pgsql \
-        php8.3-readline \
-        php8.3-redis \
-        php8.3-sqlite3 \
-        php8.3-xml \
-        php8.3-zip \
-        libxext6 \
-        libssl1.1 \
-        ca-certificates \
-        fontconfig \
-        libfreetype6 \
-        fonts-dejavu \
-        fonts-droid-fallback \
-        fonts-freefont-ttf \
-        fonts-liberation \
-        libxrender1 \
-        libfontconfig1 \
-        libx11-6 \
-        xfonts-base \
-        xfonts-75dpi \
-    && mkdir -p /run/php \
-    && echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d \
-    && rm -rf /etc/nginx/conf.d/default.conf \
-    && sed -i -e "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g" ${php_conf} \
-    && sed -i -e "s/memory_limit\s*=\s*.*/memory_limit = 256M/g" ${php_conf} \
-    && sed -i -e "s/upload_max_filesize\s*=\s*2M/upload_max_filesize = 100M/g" ${php_conf} \
-    && sed -i -e "s/post_max_size\s*=\s*8M/post_max_size = 100M/g" ${php_conf} \
-    && sed -i -e "s/variables_order = \"GPCS\"/variables_order = \"EGPCS\"/g" ${php_conf} \
-    && sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" /etc/php/8.3/fpm/php-fpm.conf \
-    && sed -i -e "s/;catch_workers_output\s*=\s*yes/catch_workers_output = yes/g" ${fpm_conf} \
-    && sed -i -e "s/pm.max_children = 5/pm.max_children = 4/g" ${fpm_conf} \
-    && sed -i -e "s/pm.start_servers = 2/pm.start_servers = 3/g" ${fpm_conf} \
-    && sed -i -e "s/pm.min_spare_servers = 1/pm.min_spare_servers = 2/g" ${fpm_conf} \
-    && sed -i -e "s/pm.max_spare_servers = 3/pm.max_spare_servers = 4/g" ${fpm_conf} \
-    && sed -i -e "s/pm.max_requests = 500/pm.max_requests = 200/g" ${fpm_conf} \
-    && sed -i -e "s/www-data/nginx/g" ${fpm_conf} \
-    && sed -i -e "s/^;clear_env = no$/clear_env = no/" ${fpm_conf} \
-    && sed -i -e "s/nginx\.pid/nginx\/nginx\.pid/g" /etc/nginx/nginx.conf \
-    && echo "extension=redis.so" > /etc/php/8.3/mods-available/redis.ini \
-    && echo "extension=imagick.so" > /etc/php/8.3/mods-available/imagick.ini \
-    && ln -sf /etc/php/8.3/mods-available/redis.ini /etc/php/8.3/fpm/conf.d/20-redis.ini \
-    && ln -sf /etc/php/8.3/mods-available/redis.ini /etc/php/8.3/cli/conf.d/20-redis.ini \
-    && ln -sf /etc/php/8.3/mods-available/imagick.ini /etc/php/8.3/fpm/conf.d/20-imagick.ini \
-    && ln -sf /etc/php/8.3/mods-available/imagick.ini /etc/php/8.3/cli/conf.d/20-imagick.ini \
-    # Install Composer
-    && curl -o /tmp/composer-setup.php https://getcomposer.org/installer \
-    && curl -o /tmp/composer-setup.sig https://composer.github.io/installer.sig \
-    && php -r "if (hash('SHA384', file_get_contents('/tmp/composer-setup.php')) !== trim(file_get_contents('/tmp/composer-setup.sig'))) { unlink('/tmp/composer-setup.php'); echo 'Invalid installer' . PHP_EOL; exit(1); }" \
-    && php /tmp/composer-setup.php --no-ansi --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION} \
-    # install wkhtmltopdf
-    && curl -L -o /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.5/wkhtmltox_0.12.1.4-2.buster_amd64.deb \
-    && dpkg -i /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb || apt-get install -f -y
-    # Clean up
-RUN rm -rf /tmp/composer-setup.* \
-    && rm -rf /tmp/pear \
-    && rm -f /tmp/wkhtmltox_0.12.1.4-2.buster_amd64.deb \
-    && apt-get purge -y --auto-remove $buildDeps \
-    && apt-get clean \
-    && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir /var/run/nginx \
-    && touch /var/log/php-fpm.log \
-    && chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /var/run/nginx /var/run/php /var/log/php-fpm.log -R
+COPY --from=ochinchina/supervisord:latest /usr/local/bin/supervisord /usr/local/bin/supervisord
 
+RUN set -eux; \
+    ln -snf /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} > /etc/timezone; \
+    groupadd -g ${GID} nginx && useradd -u ${UID} -g ${GID} -r -s /usr/sbin/nologin nginx; \
+    apt-get update && apt-get install --no-install-recommends -y \
+        curl gnupg dirmngr apt-transport-https ca-certificates; \
+    mkdir -p /run/php /run/nginx /var/cache/nginx; \
+    curl -fsSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg; \
+    echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list; \
+    apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx ${PHP_MODULES}; \
+    # PHP Configurations
+    sed -i \
+        -e "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" \
+        -e "s/memory_limit\s*=.*/memory_limit = 256M/" \
+        -e "s/upload_max_filesize\s*=.*/upload_max_filesize = 100M/" \
+        -e "s/post_max_size\s*=.*/post_max_size = 100M/" \
+        -e "s/variables_order = \"GPCS\"/variables_order = \"EGPCS\"/" \
+        "$php_conf"; \
+    \
+    # FPM Configurations
+    sed -i \
+        -e "s/;daemonize\s*=.*/daemonize = no/" \
+        -e "s/;catch_workers_output\s*=.*/catch_workers_output = yes/" \
+        -e "s/pm.max_children =.*/pm.max_children = 4/" \
+        -e "s/pm.start_servers =.*/pm.start_servers = 3/" \
+        -e "s/pm.min_spare_servers =.*/pm.min_spare_servers = 2/" \
+        -e "s/pm.max_spare_servers =.*/pm.max_spare_servers = 4/" \
+        -e "s/pm.max_requests =.*/pm.max_requests = 200/" \
+        -e "s/www-data/nginx/g" \
+        -e "s/^;clear_env = no$/clear_env = no/" \
+        "$fpm_www_conf"; \
+    sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" "$php_fpm_conf"; \
+    \
+    # nginx Configuration
+    sed -i -e "s/www-data/nginx/g" "$nginx_conf"; \
+    \
+    # Install Composer
+    curl -fsSL https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=${COMPOSER_VERSION}; \
+    \
+    # Cleanup
+    apt-get purge -y --auto-remove; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
+    touch /var/log/php-fpm.log /run/nginx.pid; \
+    chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /run/nginx.pid /run/php /var/log/php-fpm.log -R
+
+    
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
 
-# Override nginx's default config
-COPY ./default.conf /etc/nginx/conf.d/default.conf
+# set default config
+COPY ./default.conf /etc/nginx/sites-available/default
 
 WORKDIR /app
 
-EXPOSE 8000
-
-CMD ["/usr/local/bin/supervisord"]
+CMD ["/usr/local/bin/supervisord", "-c", "/etc/supervisord.conf"]
