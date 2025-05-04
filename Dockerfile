@@ -3,7 +3,7 @@ FROM debian:bookworm-slim
 ARG GID=1001
 ARG UID=1001
 ARG TZ=UTC
-ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-mysql php8.3-opcache php8.3-pgsql php8.3-readline php8.3-redis php8.3-soap php8.3-sqlite3 php8.3-xml php8.3-zip"
+ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-gd php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-mysql php8.3-opcache php8.3-pgsql php8.3-readline php8.3-redis php8.3-soap php8.3-sqlite3 php8.3-xml php8.3-zip"
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV php_conf /etc/php/8.3/fpm/php.ini
