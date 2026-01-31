@@ -3,7 +3,7 @@ FROM debian:bookworm-slim
 ARG GID=1001
 ARG UID=1001
 ARG TZ=UTC
-ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-gd php8.3-imagick php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-mysql php8.3-opcache php8.3-pgsql php8.3-readline php8.3-redis php8.3-soap php8.3-sqlite3 php8.3-xml php8.3-zip"
+ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-gd php8.3-imagick php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-opcache php8.3-pdo-mysql php8.3-pdo-pgsql php8.3-pdo-sqlite php8.3-readline php8.3-redis php8.3-soap php8.3-xml php8.3-zip"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV php_conf=/etc/php/8.3/fpm/php.ini
@@ -20,6 +20,12 @@ RUN set -eux; \
     apt-get update && apt-get install --no-install-recommends -y \
         curl gnupg dirmngr apt-transport-https ca-certificates; \
     mkdir -p /run/php /run/nginx /var/cache/nginx; \
+    # Nginx GPG
+    curl -fsSL https://nginx.org/keys/nginx_signing.key \
+      | gpg --dearmor \
+      | tee /usr/share/keyrings/nginx.gpg > /dev/null; \
+    echo "deb [signed-by=/usr/share/keyrings/nginx.gpg] \
+      http://nginx.org/packages/mainline/debian bookworm nginx" > /etc/apt/sources.list.d/nginx.list; \
     curl -fsSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg; \
     echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list; \
     apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES}; \
@@ -61,7 +67,6 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     touch /var/log/php-fpm.log /run/nginx.pid; \
     chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /run/nginx.pid /run/php /var/log/php-fpm.log -R
-
     
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
