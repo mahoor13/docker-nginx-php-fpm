@@ -89,8 +89,8 @@ RUN set -eux; \
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
 
-# set default config
-COPY ./default.conf /etc/nginx/sites-available/default
+# nginx.org packages load virtual hosts from /etc/nginx/conf.d/*.conf.
+COPY ./default.conf /etc/nginx/conf.d/default.conf
 
 WORKDIR /app
 
