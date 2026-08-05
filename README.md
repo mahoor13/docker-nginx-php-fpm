@@ -2,7 +2,15 @@
 
 ## Introduction
 
-This is a Dockerfile to build a debian based container image running nginx and php-fpm 8.3.x & Composer.
+This is a Dockerfile to build a debian based container image running nginx and php-fpm & Composer.
+
+The PHP version is configurable at build time (defaults to 8.3.x), and the image ships with:
+
+- **Selectable PHP version** via the `PHP_VERSION` build arg (e.g. `8.1`, `8.2`, `8.3`, `8.4`).
+- **ImageMagick + Ghostscript** with `policy.xml` patched to allow **PDF/PS conversions**.
+- **Supervisord-managed** `php-fpm`, `nginx`, plus optional **Laravel scheduler** (`schedule:work`) and **Laravel queue** (`queue:work`) workers.
+- Long-running request support: nginx `proxy_*`/`send`/`fastcgi_read` timeouts set to `600s`.
+- Automatic `composer install` on first start when `/app/composer.json` is present and `vendor/` is missing.
 
 ## Building from source
 
@@ -16,13 +24,50 @@ $ cd docker-nginx-php-fpm
 followed by
 
 ```
-$ docker buildx build . -t mahoor13/docker-nginx-php-fpm:php83 --progress plain --build-arg UID=1001 --build-arg GID=1001 --build-arg TZ=Asia/Tehran # PHP 8.3.x
+$ docker buildx build . -t mahoor13/nginx-php-fpm:php83 --progress plain --build-arg UID=1001 --build-arg GID=1001 --build-arg TZ=Asia/Tehran # PHP 8.3.x (default)
 ```
+
+### Building a different PHP version
+
+Override the `PHP_VERSION` build arg to build any supported version:
+
+```
+$ docker buildx build . -t mahoor13/nginx-php-fpm:php81 --build-arg PHP_VERSION=8.1 # PHP 8.1.x
+$ docker buildx build . -t mahoor13/nginx-php-fpm:php84 --build-arg PHP_VERSION=8.4 # PHP 8.4.x
+```
+
+### Installing extra packages
+
+Use the `EXTRA_PACKAGES` build arg to install additional Debian packages. Pass package names as a space-separated list:
+
+```
+$ docker buildx build . -t mahoor13/nginx-php-fpm:custom --build-arg EXTRA_PACKAGES="git jq"
+```
+
+Ghostscript (the `ghostscript` Debian package, which provides the `gs` command) is already included in the base image. If it were not bundled, it could be added in the same way:
+
+```
+$ docker buildx build . -t mahoor13/nginx-php-fpm:with-gs --build-arg EXTRA_PACKAGES="ghostscript"
+```
+
+Or use the helper script, which builds, saves and deploys the image (tag derived from the version):
+
+```
+$ ./build-and-deploy.sh 8.4   # builds nginx-php-fpm:php84
+$ ./build-and-deploy.sh 8.4 "git jq"   # also installs git and jq
+```
+
+## Laravel scheduler & queue
+
+The bundled `supervisord.conf` defines two optional Laravel workers:
+
+- `laravel-scheduler` — runs `php /app/artisan schedule:work` (autostarts).
+- `laravel-queue` — runs `php /app/artisan queue:work` with 8 processes (**disabled by default**; set `autostart=true` in `supervisord.conf` to activate).
 
 ## Pulling from Docker Hub
 
 ```
-$ docker pull mahoor13/docker-nginx-php-fpm:php83
+$ docker pull mahoor13/nginx-php-fpm:php83
 ```
 
 ## Running
@@ -30,11 +75,11 @@ $ docker pull mahoor13/docker-nginx-php-fpm:php83
 To run the container:
 
 ```
-$ sudo docker run -d mahoor13/docker-nginx-php-fpm:php83
+$ sudo docker run -d mahoor13/nginx-php-fpm:php83
 ```
 
-Default web root:
+Mount your application at `/app`. The nginx web root points to:
 
 ```
-/app
+/app/public
 ```

@@ -3,12 +3,20 @@ FROM debian:bookworm-slim
 ARG GID=1001
 ARG UID=1001
 ARG TZ=UTC
-ARG PHP_MODULES="php8.3-bcmath php8.3-cli php8.3-common php8.3-curl php8.3-fpm php8.3-gd php8.3-imagick php8.3-intl php8.3-mbstring php8.3-mcrypt php8.3-mysql php8.3-opcache php8.3-pgsql php8.3-readline php8.3-redis php8.3-soap php8.3-sqlite3 php8.3-xml php8.3-zip"
+# PHP version to build. Override at build time, e.g.:
+#   docker build --build-arg PHP_VERSION=8.1 .
+#   docker build --build-arg PHP_VERSION=8.4 .
+#   REMOVE  php${PHP_VERSION}-opcache for php 8.5
+ARG PHP_VERSION=8.3
+ARG PHP_MODULES="php${PHP_VERSION}-bcmath php${PHP_VERSION}-cli php${PHP_VERSION}-common php${PHP_VERSION}-curl php${PHP_VERSION}-fpm php${PHP_VERSION}-gd php${PHP_VERSION}-imagick php${PHP_VERSION}-intl php${PHP_VERSION}-mbstring php${PHP_VERSION}-mcrypt php${PHP_VERSION}-mysql php${PHP_VERSION}-opcache php${PHP_VERSION}-pgsql php${PHP_VERSION}-readline php${PHP_VERSION}-redis php${PHP_VERSION}-soap php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-xml php${PHP_VERSION}-zip"
+# Optional, space-separated Debian packages to install in the image.
+ARG EXTRA_PACKAGES=""
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV php_conf=/etc/php/8.3/fpm/php.ini
-ENV fpm_www_conf=/etc/php/8.3/fpm/pool.d/www.conf
-ENV php_fpm_conf=/etc/php/8.3/fpm/php-fpm.conf
+ENV PHP_VERSION=${PHP_VERSION}
+ENV php_conf=/etc/php/${PHP_VERSION}/fpm/php.ini
+ENV fpm_www_conf=/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf
+ENV php_fpm_conf=/etc/php/${PHP_VERSION}/fpm/php-fpm.conf
 ENV nginx_conf=/etc/nginx/nginx.conf
 ENV COMPOSER_VERSION=2.8.6
 
@@ -22,7 +30,7 @@ RUN set -eux; \
     mkdir -p /run/php /run/nginx /var/cache/nginx; \
     curl -fsSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg; \
     echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list; \
-    apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES}; \
+    apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES} ${EXTRA_PACKAGES}; \
     # Patch ImageMagick policy.xml to allow PDF conversions
     sed -i 's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true; \
     sed -i 's/<policy domain="coder" rights="none" pattern="PS"/<policy domain="coder" rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml || true; \
@@ -44,10 +52,15 @@ RUN set -eux; \
         -e "s/pm.min_spare_servers =.*/pm.min_spare_servers = 2/" \
         -e "s/pm.max_spare_servers =.*/pm.max_spare_servers = 4/" \
         -e "s/pm.max_requests =.*/pm.max_requests = 200/" \
+        -e "s#^listen = .*#listen = /run/php/php-fpm.sock#" \
         -e "s/www-data/nginx/g" \
         -e "s/^;clear_env = no$/clear_env = no/" \
         "$fpm_www_conf"; \
     sed -i -e "s/;daemonize\s*=\s*yes/daemonize = no/g" "$php_fpm_conf"; \
+    \
+    # Version-agnostic symlinks so supervisord/nginx configs don't hardcode the PHP version
+    ln -snf /usr/sbin/php-fpm${PHP_VERSION} /usr/sbin/php-fpm; \
+    ln -snf /etc/php/${PHP_VERSION} /etc/php/current; \
     \
     # nginx Configuration
     sed -i -e "s/www-data/nginx/g" "$nginx_conf"; \
@@ -62,7 +75,7 @@ RUN set -eux; \
     touch /var/log/php-fpm.log /run/nginx.pid; \
     chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /run/nginx.pid /run/php /var/log/php-fpm.log -R
 
-    
+
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
 

@@ -23,6 +23,7 @@ Thumbs.db
 /nbproject
 /.project
 /.idea
+/.vscode
 /.eclipse
 *.vi
 
