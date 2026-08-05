@@ -5,10 +5,9 @@ ARG UID=1001
 ARG TZ=UTC
 # PHP version to build. Override at build time, e.g.:
 #   docker build --build-arg PHP_VERSION=8.1 .
-#   docker build --build-arg PHP_VERSION=8.4 .
-#   REMOVE  php${PHP_VERSION}-opcache for php 8.5
+#   docker build --build-arg PHP_VERSION=8.5 .
 ARG PHP_VERSION=8.3
-ARG PHP_MODULES="php${PHP_VERSION}-bcmath php${PHP_VERSION}-cli php${PHP_VERSION}-common php${PHP_VERSION}-curl php${PHP_VERSION}-fpm php${PHP_VERSION}-gd php${PHP_VERSION}-imagick php${PHP_VERSION}-intl php${PHP_VERSION}-mbstring php${PHP_VERSION}-mcrypt php${PHP_VERSION}-mysql php${PHP_VERSION}-opcache php${PHP_VERSION}-pgsql php${PHP_VERSION}-readline php${PHP_VERSION}-redis php${PHP_VERSION}-soap php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-xml php${PHP_VERSION}-zip"
+ARG PHP_MODULES="php${PHP_VERSION}-bcmath php${PHP_VERSION}-cli php${PHP_VERSION}-common php${PHP_VERSION}-curl php${PHP_VERSION}-fpm php${PHP_VERSION}-gd php${PHP_VERSION}-imagick php${PHP_VERSION}-intl php${PHP_VERSION}-mbstring php${PHP_VERSION}-mcrypt php${PHP_VERSION}-mysql php${PHP_VERSION}-pgsql php${PHP_VERSION}-readline php${PHP_VERSION}-redis php${PHP_VERSION}-soap php${PHP_VERSION}-sqlite3 php${PHP_VERSION}-xml php${PHP_VERSION}-zip"
 # Optional, space-separated Debian packages to install in the image.
 ARG EXTRA_PACKAGES=""
 
@@ -34,9 +33,15 @@ RUN set -eux; \
       | tee /usr/share/keyrings/nginx.gpg > /dev/null; \
     echo "deb [signed-by=/usr/share/keyrings/nginx.gpg] \
       http://nginx.org/packages/mainline/debian bookworm nginx" > /etc/apt/sources.list.d/nginx.list; \
+    # Debian PHP packages from Ondrej Sury; do not use the Ubuntu-only ppa:ondrej/php here.
     curl -fsSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg; \
     echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list; \
-    apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES} ${EXTRA_PACKAGES}; \
+    apt-get update; \
+    PHP_OPCACHE_PACKAGE="php${PHP_VERSION}-opcache"; \
+    if ! apt-cache show "${PHP_OPCACHE_PACKAGE}" > /dev/null 2>&1; then \
+        PHP_OPCACHE_PACKAGE=""; \
+    fi; \
+    apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES} ${PHP_OPCACHE_PACKAGE} ${EXTRA_PACKAGES}; \
     # Patch ImageMagick policy.xml to allow PDF conversions
     sed -i 's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true; \
     sed -i 's/<policy domain="coder" rights="none" pattern="PS"/<policy domain="coder" rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml || true; \

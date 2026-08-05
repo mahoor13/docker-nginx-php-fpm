@@ -6,7 +6,7 @@ This is a Dockerfile to build a debian based container image running nginx and p
 
 The PHP version is configurable at build time (defaults to 8.3.x), and the image ships with:
 
-- **Selectable PHP version** via the `PHP_VERSION` build arg (e.g. `8.1`, `8.2`, `8.3`, `8.4`).
+- **Selectable PHP version** via the `PHP_VERSION` build arg (e.g. `8.1`, `8.2`, `8.3`, `8.4`, `8.5`).
 - **ImageMagick + Ghostscript** with `policy.xml` patched to allow **PDF/PS conversions**.
 - **Supervisord-managed** `php-fpm`, `nginx`, plus optional **Laravel scheduler** (`schedule:work`) and **Laravel queue** (`queue:work`) workers.
 - Long-running request support: nginx `proxy_*`/`send`/`fastcgi_read` timeouts set to `600s`.
@@ -34,7 +34,10 @@ Override the `PHP_VERSION` build arg to build any supported version:
 ```
 $ docker buildx build . -t mahoor13/nginx-php-fpm:php81 --build-arg PHP_VERSION=8.1 # PHP 8.1.x
 $ docker buildx build . -t mahoor13/nginx-php-fpm:php84 --build-arg PHP_VERSION=8.4 # PHP 8.4.x
+$ docker buildx build . -t mahoor13/nginx-php-fpm:php85 --build-arg PHP_VERSION=8.5 # PHP 8.5.x
 ```
+
+The image uses the Ondrej Sury repository for Debian. Do not add the Ubuntu-only `ppa:ondrej/php` repository or install `software-properties-common` for this purpose.
 
 ### Installing extra packages
 
