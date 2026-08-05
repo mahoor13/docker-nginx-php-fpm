@@ -28,6 +28,12 @@ RUN set -eux; \
     apt-get update && apt-get install --no-install-recommends -y \
         curl gnupg dirmngr apt-transport-https ca-certificates; \
     mkdir -p /run/php /run/nginx /var/cache/nginx; \
+    # Nginx GPG
+    curl -fsSL https://nginx.org/keys/nginx_signing.key \
+      | gpg --dearmor \
+      | tee /usr/share/keyrings/nginx.gpg > /dev/null; \
+    echo "deb [signed-by=/usr/share/keyrings/nginx.gpg] \
+      http://nginx.org/packages/mainline/debian bookworm nginx" > /etc/apt/sources.list.d/nginx.list; \
     curl -fsSL https://packages.sury.org/php/apt.gpg -o /etc/apt/trusted.gpg.d/php.gpg; \
     echo "deb https://packages.sury.org/php/ bookworm main" > /etc/apt/sources.list.d/php.list; \
     apt-get update && apt-get install --no-install-recommends -y nano zip unzip nginx imagemagick ghostscript ${PHP_MODULES} ${EXTRA_PACKAGES}; \
@@ -74,7 +80,6 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*; \
     touch /var/log/php-fpm.log /run/nginx.pid; \
     chown ${UID}:${GID} /etc/nginx /var/log/nginx /var/cache/nginx /run/nginx.pid /run/php /var/log/php-fpm.log -R
-
 
 # Supervisor config
 COPY ./supervisord.conf /etc/supervisord.conf
