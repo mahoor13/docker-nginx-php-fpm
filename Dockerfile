@@ -60,14 +60,14 @@ RUN set -eux; \
     sed -i 's/<policy domain="coder" rights="none" pattern="PDF"/<policy domain="coder" rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true; \
     sed -i 's/<policy domain="coder" rights="none" pattern="PS"/<policy domain="coder" rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml || true; \
     # PHP Configurations
-    sed -i \
-        -e "s/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/" \
-        -e "s/memory_limit\s*=.*/memory_limit = 256M/" \
-        -e "s/upload_max_filesize\s*=.*/upload_max_filesize = 100M/" \
-        -e "s/post_max_size\s*=.*/post_max_size = 100M/" \
-        -e "s/max_input_nesting_level\s*=.*/max_input_nesting_level = 128/" \
-        -e "s/max_input_vars\s*=.*/max_input_vars = 10000/" \
-        -e "s/variables_order = \"GPCS\"/variables_order = \"EGPCS\"/" \
+    sed -Ei \
+        -e 's/;?cgi\.fix_pathinfo\s*=.*/cgi.fix_pathinfo=0/' \
+        -e 's/;?memory_limit\s*=.*/memory_limit = 256M/' \
+        -e 's/;?upload_max_filesize\s*=.*/upload_max_filesize = 100M/' \
+        -e 's/;?post_max_size\s*=.*/post_max_size = 100M/' \
+        -e 's/;?max_input_nesting_level\s*=.*/max_input_nesting_level = 128/' \
+        -e 's/;?max_input_vars\s*=.*/max_input_vars = 10000/' \
+        -e 's/;?variables_order\s*=\s*"GPCS"/variables_order = "EGPCS"/' \
         "$php_conf"; \
     \
     # FPM Configurations
