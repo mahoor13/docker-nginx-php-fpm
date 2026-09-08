@@ -64,8 +64,20 @@ $ ./build-and-deploy.sh 8.4 "git jq"   # also installs git and jq
 
 The bundled `supervisord.conf` defines two optional Laravel workers:
 
-- `laravel-scheduler` — runs `php /app/artisan schedule:work` (autostarts).
-- `laravel-queue` — runs `php /app/artisan queue:work` with 8 processes (**disabled by default**; set `autostart=true` in `supervisord.conf` to activate).
+- `laravel-scheduler` — runs `php /app/artisan schedule:work`.
+- `laravel-queue` — runs `php /app/artisan queue:work` with 8 processes.
+
+Both workers are disabled by default. Enable either one at build time:
+
+```
+$ docker buildx build . -t mahoor13/nginx-php-fpm:scheduler --build-arg LARAVEL_SCHEDULER_AUTOSTART=true
+$ docker buildx build . -t mahoor13/nginx-php-fpm:queue --build-arg LARAVEL_QUEUE_AUTOSTART=true
+```
+
+The build arguments accept only `true` or `false`:
+
+- `LARAVEL_SCHEDULER_AUTOSTART` (default: `false`)
+- `LARAVEL_QUEUE_AUTOSTART` (default: `false`)
 
 ## Pulling from Docker Hub
 

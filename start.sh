@@ -14,5 +14,22 @@ if [ -f "/app/composer.json" ] && [ ! -d "/app/vendor" ]; then
     composer install --no-interaction --prefer-dist --optimize-autoloader
 fi
 
+set -eux
+case "${LARAVEL_SCHEDULER_AUTOSTART:-}" in
+true|false)
+    sed -i \
+        -e "/^\[program:laravel-scheduler\]$/,/^\[/ s/^autostart=.*/autostart=${LARAVEL_SCHEDULER_AUTOSTART}/" \
+        /etc/supervisord.conf
+    ;;
+esac
+
+case "${LARAVEL_QUEUE_AUTOSTART:-}" in
+true|false)
+    sed -i \
+        -e "/^\[program:laravel-queue\]$/,/^\[/ s/^autostart=.*/autostart=${LARAVEL_QUEUE_AUTOSTART}/" \
+        /etc/supervisord.conf
+    ;;
+esac
+
 # Start supervisord and services
-/usr/local/bin/supervisord -n -c /etc/supervisord.conf
+/usr/local/bin/supervisord -c /etc/supervisord.conf
